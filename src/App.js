@@ -5,10 +5,11 @@ import { listNotes } from "./graphql/queries";
 import {
   createNote as CreateNote,
   deleteNote as DeleteNote,
+  updateNote as UpdateNote,
 } from "./graphql/mutations";
 // Ant Design imports
 import { Button, Input, List, PageHeader } from "antd";
-import { DeleteOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined } from "@ant-design/icons";
 
 import "antd/dist/antd.css";
 // misc imports
@@ -50,8 +51,6 @@ function App() {
           ...state,
           form: { ...state.form, [action.name]: action.value },
         };
-      case "DELETE_NOTE":
-        return { ...state, notes: action.notes };
       default:
         return state;
     }
@@ -95,14 +94,13 @@ function App() {
   // remove a note
   async function deleteNote({ id }) {
     const notes = state.notes.filter((note) => note.id !== id);
-    dispatch({ type: "DELETE_NOTE", notes });
+    dispatch({ type: "SET_NOTES", notes });
 
     try {
       API.graphql({
         query: DeleteNote,
         variables: { input: { id } },
       });
-      console.log("note deleted");
     } catch (err) {
       dispatch({ type: "ERROR" });
       console.log("Deletion error: ", err);
@@ -122,7 +120,14 @@ function App() {
         <List.Item.Meta title={item.name} description={item.description} />
         <Button
           type='secondary'
+          style={{ ...styles.listButton, color: "red" }}
           icon={<DeleteOutlined />}
+          onClick={() => deleteNote(item)}
+        />
+        <Button
+          type='secondary'
+          style={styles.listButton}
+          icon={<EditOutlined />}
           onClick={() => deleteNote(item)}
         />
       </List.Item>
