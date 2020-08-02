@@ -11,5 +11,6 @@ export const App = {
   item: {
     textAlign: "left",
   },
+  listButton: { marginRight: "5px" },
   p: { color: "#12890ff" },
 };

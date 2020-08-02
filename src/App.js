@@ -2,10 +2,14 @@ import React, { useEffect, useReducer } from "react";
 // Amplify imports
 import { API } from "aws-amplify";
 import { listNotes } from "./graphql/queries";
-import { createNote as CreateNote } from "./graphql/mutations";
+import {
+  createNote as CreateNote,
+  deleteNote as DeleteNote,
+  updateNote as UpdateNote,
+} from "./graphql/mutations";
 // Ant Design imports
 import { Button, Input, List, PageHeader } from "antd";
-import { DeleteOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined } from "@ant-design/icons";
 
 import "antd/dist/antd.css";
 // misc imports
@@ -15,22 +19,6 @@ import { v4 as uuid } from "uuid";
 import { App as styles } from "./styles/customStyles";
 
 const CLIENT_ID = uuid();
-
-// const styles = {
-//   container: {
-//     margin: "0 auto",
-//     padding: 20,
-//     border: "1px solid rgba(0,0,0,0.2)",
-//     borderRadius: "3px",
-//     maxWidth: "500px",
-//     marginTop: "20px",
-//   },
-//   input: { marginBottom: 10, maxWidth: 300 },
-//   item: {
-//     textAlign: "left",
-//   },
-//   p: { color: "#12890ff" },
-// };
 
 // initialize state
 const initialState = {
@@ -68,7 +56,8 @@ function App() {
     }
   }
 
-  // get all notes from graphQL API
+  // API CALLS ===========================
+  // get all notes
   async function fetchNotes() {
     try {
       const results = await API.graphql({
@@ -80,7 +69,7 @@ function App() {
       dispatch({ type: "ERROR" });
     }
   }
-
+  // Add a note
   async function createNote() {
     const { form } = state;
     if (!form.name || !form.description) {
@@ -102,12 +91,27 @@ function App() {
     }
   }
 
-  function handleInputChange(e) {
-    dispatch({ type: "SET_INPUT", name: e.target.name, value: e.target.value });
+  // remove a note
+  async function deleteNote({ id }) {
+    const notes = state.notes.filter((note) => note.id !== id);
+    dispatch({ type: "SET_NOTES", notes });
+
+    try {
+      API.graphql({
+        query: DeleteNote,
+        variables: { input: { id } },
+      });
+    } catch (err) {
+      dispatch({ type: "ERROR" });
+      console.log("Deletion error: ", err);
+    }
   }
 
-  function removeNote(id) {
-    console.log("delete", id);
+  // ===========================
+
+  // Form input control
+  function handleInputChange(e) {
+    dispatch({ type: "SET_INPUT", name: e.target.name, value: e.target.value });
   }
 
   function renderItem(item) {
@@ -116,8 +120,15 @@ function App() {
         <List.Item.Meta title={item.name} description={item.description} />
         <Button
           type='secondary'
+          style={{ ...styles.listButton, color: "red" }}
           icon={<DeleteOutlined />}
-          onClick={() => removeNote(item.id)}
+          onClick={() => deleteNote(item)}
+        />
+        <Button
+          type='secondary'
+          style={styles.listButton}
+          icon={<EditOutlined />}
+          onClick={() => deleteNote(item)}
         />
       </List.Item>
     );
