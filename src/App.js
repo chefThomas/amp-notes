@@ -4,21 +4,33 @@ import { API } from "aws-amplify";
 import { listNotes } from "./graphql/queries";
 import { createNote as CreateNote } from "./graphql/mutations";
 // Ant Design imports
-import { List, Input, Button } from "antd";
+import { Button, Input, List, PageHeader } from "antd";
+import { DeleteOutlined } from "@ant-design/icons";
+
 import "antd/dist/antd.css";
 // misc imports
 import { v4 as uuid } from "uuid";
 
+// custom styling
+import { App as styles } from "./styles/customStyles";
+
 const CLIENT_ID = uuid();
 
-const styles = {
-  container: { padding: 20 },
-  input: { marginBottom: 10, maxWidth: 300 },
-  item: {
-    textAlign: "left",
-  },
-  p: { color: "#12890ff" },
-};
+// const styles = {
+//   container: {
+//     margin: "0 auto",
+//     padding: 20,
+//     border: "1px solid rgba(0,0,0,0.2)",
+//     borderRadius: "3px",
+//     maxWidth: "500px",
+//     marginTop: "20px",
+//   },
+//   input: { marginBottom: 10, maxWidth: 300 },
+//   item: {
+//     textAlign: "left",
+//   },
+//   p: { color: "#12890ff" },
+// };
 
 // initialize state
 const initialState = {
@@ -62,7 +74,6 @@ function App() {
       const results = await API.graphql({
         query: listNotes,
       });
-      console.log(results.data);
       dispatch({ type: "SET_NOTES", notes: results.data.listNotes.items });
     } catch (err) {
       console.log("error: ", err);
@@ -82,7 +93,8 @@ function App() {
 
     try {
       await API.graphql({
-        mutation: CreateNote,
+        query: CreateNote,
+        variables: { input: note },
       });
     } catch (err) {
       dispatch({ type: "ERROR" });
@@ -94,10 +106,19 @@ function App() {
     dispatch({ type: "SET_INPUT", name: e.target.name, value: e.target.value });
   }
 
+  function removeNote(id) {
+    console.log("delete", id);
+  }
+
   function renderItem(item) {
     return (
       <List.Item key={item.id} style={styles.item}>
         <List.Item.Meta title={item.name} description={item.description} />
+        <Button
+          type='secondary'
+          icon={<DeleteOutlined />}
+          onClick={() => removeNote(item.id)}
+        />
       </List.Item>
     );
   }
@@ -108,13 +129,29 @@ function App() {
 
   return (
     <div style={styles.container}>
-      <Input
-        name='description'
-        style={styles.input}
-        onChange={handleInputChange}
-      />
-      <Input name='name' style={styles.input} onChange={handleInputChange} />
-      <Button onClick={createNote}>Add Note</Button>
+      <PageHeader title='Notes App' subTitle='built with Amplify' />
+      <div>
+        <Input
+          placeholder='Note Name'
+          name='name'
+          style={styles.input}
+          onChange={handleInputChange}
+          value={state.form.name}
+        />
+      </div>
+      <div>
+        <Input
+          placeholder='Note Description'
+          name='description'
+          style={styles.input}
+          onChange={handleInputChange}
+          value={state.form.description}
+        />
+      </div>
+      <Button type='primary' onClick={createNote}>
+        Add Note
+      </Button>
+      <hr></hr>
       <List
         loading={state.loading}
         dataSource={state.notes}
