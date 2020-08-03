@@ -29,6 +29,8 @@ const initialState = {
     name: "",
     description: "",
   },
+  editNote: false,
+  noteId: null,
 };
 
 function App() {
@@ -51,12 +53,16 @@ function App() {
           ...state,
           form: { ...state.form, [action.name]: action.value },
         };
+      case "SET_NOTE_EDIT_ID":
+        return { ...state, noteId: action.noteId };
+      case "TOGGLE_EDIT_NOTE":
+        return { ...state, editNote: !state.editNote };
       default:
         return state;
     }
   }
 
-  // API CALLS ===========================
+  // NOTES ===========================
   // get all notes
   async function fetchNotes() {
     try {
@@ -107,6 +113,61 @@ function App() {
     }
   }
 
+  // update state and make note update API call
+  async function updateNote() {
+    // find note in state and update with form values
+    const { form, noteId, notes } = state;
+
+    if (!form.name || !form.description) {
+      return alert("please enter name and description");
+    }
+
+    const updatedNotes = notes.map((note) =>
+      note.id === noteId
+        ? { ...note, name: form.name, description: form.description }
+        : note
+    );
+    // update state
+    dispatch({ type: "SET_NOTES", notes: updatedNotes });
+    // update db
+    try {
+      const result = await API.graphql({
+        query: UpdateNote,
+        variables: {
+          input: { id: noteId, name: form.name, description: form.description },
+        },
+      });
+      dispatch({ type: "TOGGLE_EDIT_NOTE" });
+      dispatch({ type: "RESET_FORM" });
+      dispatch({ type: "SET_NOTE_EDIT_ID", noteId: initialState.noteId });
+    } catch (err) {
+      dispatch({ type: "ERROR" });
+      console.log("update error", err);
+    }
+  }
+
+  // control update/add note
+  function handleNoteEdit(item) {
+    // set state to edit mode. Edit mode sets add/edit note function of form button
+    if (!state.editNote) {
+      dispatch({ type: "SET_NOTE_EDIT_ID", noteId: item.id });
+      // set form to selected note values
+      dispatch({ type: "SET_INPUT", name: "name", value: item.name });
+      dispatch({
+        type: "SET_INPUT",
+        name: "description",
+        value: item.description,
+      });
+    } else {
+      // reset note id
+      dispatch({ type: "SET_NOTE_EDIT_ID", noteId: initialState.noteId });
+      // reset form
+      dispatch({ type: "RESET_FORM" });
+    }
+
+    dispatch({ type: "TOGGLE_EDIT_NOTE" });
+  }
+
   // ===========================
 
   // Form input control
@@ -114,13 +175,15 @@ function App() {
     dispatch({ type: "SET_INPUT", name: e.target.name, value: e.target.value });
   }
 
+  // render note. This function is a prop of antd List compoent
   function renderItem(item) {
     return (
       <List.Item key={item.id} style={styles.item}>
         <List.Item.Meta title={item.name} description={item.description} />
         <Button
           type='secondary'
-          style={{ ...styles.listButton, color: "red" }}
+          disabled={item.id === state.noteId}
+          style={{ ...styles.listButton }}
           icon={<DeleteOutlined />}
           onClick={() => deleteNote(item)}
         />
@@ -128,7 +191,7 @@ function App() {
           type='secondary'
           style={styles.listButton}
           icon={<EditOutlined />}
-          onClick={() => deleteNote(item)}
+          onClick={() => handleNoteEdit(item)}
         />
       </List.Item>
     );
@@ -159,8 +222,8 @@ function App() {
           value={state.form.description}
         />
       </div>
-      <Button type='primary' onClick={createNote}>
-        Add Note
+      <Button type='primary' onClick={state.editNote ? updateNote : createNote}>
+        {state.editNote ? "Edit Note" : "Add Note"}
       </Button>
       <hr></hr>
       <List
